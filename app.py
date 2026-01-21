@@ -67,16 +67,29 @@ st.markdown("""
 
 
 @st.cache_resource
-def load_rag_system():
+def load_rag_system(vector_store_path="data/vector_store"):
     """Load the vector store and embedder (cached)."""
     try:
-        vector_store = VectorStore.load("data/vector_store")
+        vector_store = VectorStore.load(vector_store_path)
         embedder = Embedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
-        return vector_store, embedder
+        return vector_store, embedder, None
+    except FileNotFoundError as e:
+        return None, None, f"Vector store not found at {vector_store_path}"
     except Exception as e:
-        st.error(f"Error loading RAG system: {str(e)}")
-        st.info("Make sure you've run the ingestion pipeline first:\n```bash\npython3.8 -m src.ingest --docs-path /path/to/python-docs\n```")
-        return None, None
+        return None, None, f"Error loading RAG system: {str(e)}"
+
+
+def save_uploaded_files(uploaded_files):
+    """Save uploaded vector store files."""
+    import os
+    os.makedirs("data/vector_store", exist_ok=True)
+    
+    for uploaded_file in uploaded_files:
+        file_path = f"data/vector_store/{uploaded_file.name}"
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+    
+    return True
 
 
 def format_similarity_score(distance):
@@ -95,7 +108,7 @@ def main():
         st.header("📊 System Info")
         
         # Load system
-        vector_store, embedder = load_rag_system()
+        vector_store, embedder, error_msg = load_rag_system()
         
         if vector_store and embedder:
             st.success("✅ RAG System Loaded")
@@ -122,6 +135,40 @@ def main():
             """)
         else:
             st.error("❌ RAG System Not Loaded")
+            if error_msg:
+                st.warning(error_msg)
+            
+            st.divider()
+            st.header("📤 Upload Vector Store")
+            st.info("""
+            **For Streamlit Cloud deployment:**
+            
+            Upload your vector store files:
+            1. `faiss_index.bin`
+            2. `chunks_metadata.json`
+            
+            These files are in your local `data/vector_store/` directory.
+            """)
+            
+            uploaded_files = st.file_uploader(
+                "Upload vector store files",
+                type=["bin", "json"],
+                accept_multiple_files=True,
+                help="Upload both faiss_index.bin and chunks_metadata.json"
+            )
+            
+            if uploaded_files and len(uploaded_files) >= 2:
+                if st.button("Load Uploaded Files", type="primary"):
+                    with st.spinner("Loading vector store..."):
+                        try:
+                            save_uploaded_files(uploaded_files)
+                            st.success("✅ Files uploaded! Reloading app...")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
+            
+            st.divider()
+            st.caption("💡 Or run ingestion locally and upload the generated files")
             return
     
     # Main content
