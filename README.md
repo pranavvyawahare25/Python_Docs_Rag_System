@@ -29,7 +29,15 @@ This will:
 - Build FAISS vector index
 - Save everything to `data/vector_store/`
 
-### 3. Query the System
+### 3. Option A: Use Web Interface (Recommended)
+
+```bash
+streamlit run app.py
+```
+
+Open your browser to `http://localhost:8501` and start asking questions!
+
+### 3. Option B: Use CLI
 
 ```bash
 python src/query.py "How do I use list comprehensions in Python?"
