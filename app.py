@@ -82,14 +82,41 @@ def load_rag_system(vector_store_path="data/vector_store"):
 def save_uploaded_files(uploaded_files):
     """Save uploaded vector store files."""
     import os
-    os.makedirs("data/vector_store", exist_ok=True)
     
-    for uploaded_file in uploaded_files:
-        file_path = f"data/vector_store/{uploaded_file.name}"
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+    # Create directory if it doesn't exist
+    vector_store_dir = "data/vector_store"
+    os.makedirs(vector_store_dir, exist_ok=True)
     
-    return True
+    # Track saved files
+    saved_files = []
+    required_files = ['faiss_index.bin', 'chunks_metadata.json']
+    
+    try:
+        for uploaded_file in uploaded_files:
+            file_path = os.path.join(vector_store_dir, uploaded_file.name)
+            
+            # Save the file
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            saved_files.append(uploaded_file.name)
+            st.success(f"✅ Saved {uploaded_file.name}")
+        
+        # Check if all required files are present
+        for req_file in required_files:
+            if not os.path.exists(os.path.join(vector_store_dir, req_file)):
+                raise FileNotFoundError(f"Missing required file: {req_file}")
+        
+        return True, saved_files
+        
+    except Exception as e:
+        # Clean up if something went wrong
+        for saved_file in saved_files:
+            try:
+                os.remove(os.path.join(vector_store_dir, saved_file))
+            except:
+                pass
+        raise e
 
 
 def format_similarity_score(distance):
@@ -157,15 +184,36 @@ def main():
                 help="Upload both faiss_index.bin and chunks_metadata.json"
             )
             
-            if uploaded_files and len(uploaded_files) >= 2:
-                if st.button("Load Uploaded Files", type="primary"):
-                    with st.spinner("Loading vector store..."):
-                        try:
-                            save_uploaded_files(uploaded_files)
-                            st.success("✅ Files uploaded! Reloading app...")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error: {str(e)}")
+            if uploaded_files:
+                st.write(f"📁 {len(uploaded_files)} file(s) selected:")
+                for f in uploaded_files:
+                    st.write(f"  • {f.name} ({f.size / 1024:.1f} KB)")
+                
+                # Check if we have the required files
+                file_names = [f.name for f in uploaded_files]
+                has_index = 'faiss_index.bin' in file_names
+                has_metadata = 'chunks_metadata.json' in file_names
+                
+                if has_index and has_metadata:
+                    if st.button("Load Uploaded Files", type="primary", key="load_btn"):
+                        with st.spinner("Saving and loading vector store..."):
+                            try:
+                                success, saved = save_uploaded_files(uploaded_files)
+                                if success:
+                                    # Clear the cache to reload with new files
+                                    st.cache_resource.clear()
+                                    st.success("✅ Files uploaded successfully! Refreshing app...")
+                                    # Force a rerun
+                                    st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Error uploading files: {str(e)}")
+                                st.exception(e)
+                else:
+                    st.warning("⚠️ Please upload both required files:")
+                    if not has_index:
+                        st.write("  ❌ Missing: faiss_index.bin")
+                    if not has_metadata:
+                        st.write("  ❌ Missing: chunks_metadata.json")
             
             st.divider()
             st.caption("💡 Or run ingestion locally and upload the generated files")
