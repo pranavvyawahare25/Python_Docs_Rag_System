@@ -10,40 +10,74 @@ This system ingests a controlled subset of Python 3.14 documentation:
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### For End Users (Using the Deployed App)
+
+**Just visit the app URL - everything works automatically!**
+
+The app will:
+1. ✅ Automatically download the vector store from GitHub (first time only)
+2. ✅ Load the RAG system
+3. ✅ Be ready to answer your Python questions!
+
+No installation or setup needed - just use it! 🎉
+
+---
+
+### For Developers (Running Locally)
+
+#### 1. Clone and Install
 
 ```bash
+git clone https://github.com/pranavvyawahare25/Python_Docs_Rag_System.git
+cd Python_Docs_Rag_System
 pip install -r requirements.txt
 ```
 
-### 2. Run Ingestion
-
-```bash
-python src/ingest.py --docs-path /Users/iampranav/Desktop/python-3.14-docs-text
-```
-
-This will:
-- Load all specified documentation files
-- Chunk them semantically (preserving section structure)
-- Generate embeddings using sentence-transformers
-- Build FAISS vector index
-- Save everything to `data/vector_store/`
-
-### 3. Option A: Use Web Interface (Recommended)
+#### 2. Option A: Use Pre-Built Vector Store (Recommended)
 
 ```bash
 streamlit run app.py
 ```
 
-Open your browser to `http://localhost:8501` and start asking questions!
+The app will automatically download the vector store on first run.
 
-### 3. Option B: Use CLI
+#### 2. Option B: Build Your Own Vector Store
+
+Run the ingestion pipeline with your own Python docs:
 
 ```bash
-python src/query.py "How do I use list comprehensions in Python?"
+python -m src.ingest --docs-path /path/to/python-docs
+streamlit run app.py
 ```
 
-## 📁 Project Structure
+---
+
+## 🐳 Docker Deployment
+
+### Quick Start with Docker
+
+```bash
+# Using docker-compose (recommended)
+docker-compose up -d
+
+# Or using docker directly
+docker build -t python-docs-rag .
+docker run -d -p 8501:8501 python-docs-rag
+```
+
+Access the app at `http://localhost:8501`
+
+**Benefits:**
+- ✅ Zero dependencies to install
+- ✅ Works on any platform (Windows, Mac, Linux)
+- ✅ Isolated environment
+- ✅ Production-ready
+
+See [DOCKER_GUIDE.md](DOCKER_GUIDE.md) for detailed instructions.
+
+---
+
+## 📦 Project Structure
 
 ```
 .
