@@ -66,15 +66,56 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+def download_vector_store_from_github():
+    """Download vector store from GitHub releases if not present."""
+    import os
+    import requests
+    import zipfile
+    from io import BytesIO
+    
+    vector_store_path = "data/vector_store"
+    index_file = os.path.join(vector_store_path, "faiss_index.bin")
+    metadata_file = os.path.join(vector_store_path, "chunks_metadata.json")
+    
+    # Check if files already exist
+    if os.path.exists(index_file) and os.path.exists(metadata_file):
+        return True, "Vector store already exists"
+    
+    try:
+        # GitHub release URL (you'll need to create a release and upload vector_store.zip)
+        # Replace with your actual release URL
+        release_url = "https://github.com/pranavvyawahare25/Python_Docs_Rag_System/releases/download/v1.0/vector_store.zip"
+        
+        st.info("📥 Downloading vector store files from GitHub (first time only)...")
+        
+        # Download the zip file
+        response = requests.get(release_url, stream=True)
+        response.raise_for_status()
+        
+        # Extract the zip file
+        with zipfile.ZipFile(BytesIO(response.content)) as zip_file:
+            zip_file.extractall("data")
+        
+        return True, "Vector store downloaded successfully"
+        
+    except requests.exceptions.RequestException as e:
+        return False, f"Could not download: {str(e)}"
+    except Exception as e:
+        return False, f"Error extracting files: {str(e)}"
+
+
 @st.cache_resource
 def load_rag_system(vector_store_path="data/vector_store"):
     """Load the vector store and embedder (cached)."""
+    # Try to download if files don't exist
+    success, message = download_vector_store_from_github()
+    
     try:
         vector_store = VectorStore.load(vector_store_path)
         embedder = Embedder(model_name="sentence-transformers/all-MiniLM-L6-v2")
         return vector_store, embedder, None
     except FileNotFoundError as e:
-        return None, None, f"Vector store not found at {vector_store_path}"
+        return None, None, f"Vector store not found. {message}"
     except Exception as e:
         return None, None, f"Error loading RAG system: {str(e)}"
 
